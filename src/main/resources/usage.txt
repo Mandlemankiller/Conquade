@@ -1,0 +1,27 @@
+conquade <action> <params>
+
+Usage: (required parameters are marked with *)
+
+conquade <action>   # (global params)
+    -debug              # enable debug (verbose) mode
+    -tmp                # set the conquade temporary folder (default: "/tmp/conquade" | "%USER%\AppData\Local\Temp\conquade")
+    -ffmpeg             # set path to the ffmpeg executable (default: "ffmpeg")
+
+conquade help       # print usage information
+
+conquade render     # render a video file to a conquade file
+*   -i <path>          # input video file path
+*   -o <path>          # output conquade file path (should end with .cqd file extension)
+    -fps <number>      # set the rendering fps (default: 30), it must be true that "0 < fps < 256"
+    -force             # overwrite output file if it already exists
+    -noaudio           # do not render audio, even if it is present (must be used for videos without an audio track)
+
+conquade play       # play a prerendered conquade file
+*   -i <path>           # input conquade file path
+    -noaudio            # do not play audio, even if it is present
+    -nores              # ignore resolution mismatch (when the rendered video size is different from the terminal size)
+
+conquade stream     # stream (play) a video without prerendering it
+*   -i <path>           # input video file path
+    -fps <number>       # set the streaming fps (default: 30), it must be true that "0 < fps < 256"
+    -noaudio            # do not stream audio, even if it is present (must be used for videos without an audio track)

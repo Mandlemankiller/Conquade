@@ -30,12 +30,13 @@ public final class ConquadeFormatter extends Formatter {
     public @NotNull String format(final @NotNull LogRecord record) {
         final String[] classPath = record.getSourceClassName().split("\\.+");
         final String className = classPath[classPath.length - 1].replace('$', ':');
-        return "%s[%s %s]: [%s] %s%n".formatted(
+        return "%s[%s %s]: [%s] %s%s%n".formatted(
                 ConquadeLevel.getAnsi(record.getLevel()),
                 DATE_FORMATTER.format(Date.from(record.getInstant())),
                 ConquadeLevel.getName(record.getLevel()),
                 className,
-                record.getMessage()
+                record.getMessage(),
+                AnsiHelper.RESET
         );
     }
 

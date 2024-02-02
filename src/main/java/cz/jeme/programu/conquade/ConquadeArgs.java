@@ -12,11 +12,9 @@ public final class ConquadeArgs {
     private final @NotNull Map<String, String> argMap;
 
     public ConquadeArgs(final String @NotNull [] args) {
-        if (args.length == 0)
-            throw new IllegalArgumentException("Missing action argument! " +
-                    "Valid actions are: " + Arrays.toString(Action.values()));
+        final String actionStr = args.length == 0 ? "HELP" : args[0].toUpperCase();
         try {
-            action = Action.valueOf(args[0].toUpperCase());
+            action = Action.valueOf(actionStr);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
                     "Action argument is not valid! " +

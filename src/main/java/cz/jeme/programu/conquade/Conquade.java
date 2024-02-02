@@ -7,6 +7,7 @@ import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -102,6 +103,24 @@ public final class Conquade {
             case RENDER -> Renderer.INSTANCE.render(conquadeArgs);
             case PLAY -> Player.INSTANCE.play(conquadeArgs);
             case STREAM -> Streamer.INSTANCE.stream(conquadeArgs);
+            case HELP -> help();
+        }
+    }
+
+    public static void help() {
+        LOGGER.fine("Printing usage info...");
+        try {
+            final InputStream usageStream = Conquade.class.getClassLoader().getResourceAsStream("usage.txt");
+            if (usageStream == null)
+                throw new IllegalStateException("Could not find usage.txt!");
+            final BufferedReader usageReader = new BufferedReader(new InputStreamReader(usageStream, StandardCharsets.UTF_8));
+            String line;
+            while ((line = usageReader.readLine()) != null)
+                System.out.println(line);
+
+            usageReader.close();
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not read usage.txt!", e);
         }
     }
 
