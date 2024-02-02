@@ -26,10 +26,10 @@ public final class AnsiHelper {
      */
     @Range(from = 16, to = 255)
     public static int toAnsi256(final int red, final int green, final int blue) {
-        return 16
-                + 36 * Math.round(red / 255f * 5)
-                + 6 * Math.round(green / 255f * 5)
-                + Math.round(blue / 255f * 5);
+        return (int) (16
+                + 36 * Math.round(red / 255D * 5)
+                + 6 * Math.round(green / 255D * 5)
+                + Math.round(blue / 255D * 5));
     }
 
 

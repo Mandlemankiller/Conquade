@@ -78,7 +78,7 @@ public final class Conquade {
             throw new IllegalStateException("Could not detect system tmp directory!");
         conquadeTmpDir = Path.of(systemTmpDirPath, "conquade").toFile();
 
-        if (CHARACTERS.length() > 255) // juts in case I had the amazing idea to change the constant to some bullshit
+        if (CHARACTERS.length() > 255) // just in case I had the amazing idea to change the constant to some bullshit
             throw new IllegalStateException("The maximum number of characters is 255!");
     }
 
