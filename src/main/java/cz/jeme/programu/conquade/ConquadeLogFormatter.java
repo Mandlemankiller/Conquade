@@ -59,7 +59,7 @@ public final class ConquadeLogFormatter extends Formatter {
     }
 
     /**
-     * A custom logger level system based on
+     * A custom logger level system based on {@link Level}.
      */
     private enum ConquadeLevel {
         /**
