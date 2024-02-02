@@ -13,9 +13,21 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * A singleton class used to render video files into Conquade video files.
+ */
 public enum Renderer {
+    /**
+     * The one and only {@link Renderer}.
+     */
     INSTANCE;
 
+    /**
+     * Returns the number of .jpg frames in the provided directory.
+     *
+     * @param inputDir the directory to search frames in
+     * @return the frame count
+     */
     public int getFrameCount(final @NotNull File inputDir) {
         return Arrays.stream(Objects.requireNonNull(inputDir.list()))
                 .filter(name -> name.endsWith(".jpg"))
@@ -24,6 +36,11 @@ public enum Renderer {
                 .orElse(0);
     }
 
+    /**
+     * Renders the video with options from the args provided.
+     *
+     * @param args the render args
+     */
     public void render(final @NotNull RenderArgs args) {
         final File inputFile = args.getInputFile();
 
@@ -40,7 +57,7 @@ public enum Renderer {
         final File audioFile = Path.of(renderTmpDir.getAbsolutePath(), "audio.wav").toFile();
 
         if (args.doRenderAudio())
-            extractAudio(inputFile, audioFile);
+            extractAudio(inputFile, audioFile, 0);
         extractFrames(inputFile, renderTmpDir, args.getFps(), Conquade.TERMINAL_WIDTH, Conquade.TERMINAL_HEIGHT);
 
         Conquade.LOGGER.info("Preparing to render frames...");
@@ -51,10 +68,11 @@ public enum Renderer {
             dos.write((byte) args.getFps());
             dos.writeInt(Conquade.TERMINAL_WIDTH);
             dos.writeInt(Conquade.TERMINAL_HEIGHT);
+            dos.writeBoolean(Conquade.trueColor);
 
             // Prepare for render info
             System.out.printf("%s%n| LOADING |%n%n".formatted(
-                    AnsiHelper.foregroundColor(AnsiHelper.toAnsi(0, 255, 255)) // aqua
+                    AnsiHelper.foregroundColor256(AnsiHelper.toAnsi256(0, 255, 255)) // aqua
             ));
 
             final int frameCount = getFrameCount(renderTmpDir);
@@ -65,7 +83,11 @@ public enum Renderer {
             for (int frameId = 1; frameId < frameCount + 1; frameId++) {
                 // Render
                 final File frame = Path.of(renderTmpDir.getAbsolutePath(), frameId + ".jpg").toFile();
-                dos.write(renderFrame(frame));
+                if (Conquade.trueColor) {
+                    dos.write(renderFrameRGB(frame));
+                } else {
+                    dos.write(renderFrame256(frame));
+                }
 
                 // Render info
                 final long currentTimeStamp = System.currentTimeMillis();
@@ -93,10 +115,10 @@ public enum Renderer {
                     System.out.print(AnsiHelper.moveCursorUp(3));
                     System.out.println(AnsiHelper.CLEAR_LINE + loadbar);
                     System.out.printf(AnsiHelper.CLEAR_LINE + "| RENDERING | %s%% | %d/%d frames | %s FPS | %s ETA |%n",
-                            ConquadeFormatter.DECIMAL_FORMATTER.format(percentage * 100),
+                            ConquadeLogFormatter.DECIMAL_FORMATTER.format(percentage * 100),
                             frameId,
                             frameCount,
-                            ConquadeFormatter.DECIMAL_FORMATTER.format(fps),
+                            ConquadeLogFormatter.DECIMAL_FORMATTER.format(fps),
                             etaBuilder
                     );
                     System.out.println(AnsiHelper.CLEAR_LINE + loadbar);
@@ -157,11 +179,22 @@ public enum Renderer {
         Conquade.LOGGER.info("Done! The output file is located at \"%s\".".formatted(outputFile.getAbsolutePath()));
     }
 
+    /**
+     * Transforms the {@link ConquadeArgs} to {@link RenderArgs} and renders the video.
+     *
+     * @param args the args to transform
+     */
     public void render(final @NotNull ConquadeArgs args) {
         render(new RenderArgs(args));
     }
 
-    public byte @NotNull [] renderFrame(final @NotNull BufferedImage frame) {
+    /**
+     * Transforms a {@link BufferedImage} into 256 color video frame data.
+     *
+     * @param frame the frame image to transform
+     * @return 256 video frame data
+     */
+    public byte @NotNull [] renderFrame256(final @NotNull BufferedImage frame) {
         final int width = frame.getWidth();
         final int height = frame.getHeight();
         byte[] data = new byte[width * height * 2]; // each pixel takes 2 bytes - character index and ansi color
@@ -178,32 +211,100 @@ public enum Renderer {
 
                 int pixel = 2 * (y * width + x); // each pixel takes 2 bytes
                 data[pixel] = (byte) index;
-                data[pixel + 1] = (byte) AnsiHelper.toAnsi(red, green, blue);
+                data[pixel + 1] = (byte) AnsiHelper.toAnsi256(red, green, blue);
             }
         }
         return data;
     }
 
-    public byte @NotNull [] renderFrame(final @NotNull File image) {
+    /**
+     * Reads a {@link BufferedImage} from a file and transforms it into 256 color video frame data.
+     *
+     * @param image the frame image file to transform
+     * @return 256 video frame data
+     */
+    public byte @NotNull [] renderFrame256(final @NotNull File image) {
         try {
-            return renderFrame(ImageIO.read(image));
+            return renderFrame256(ImageIO.read(image));
         } catch (IOException e) {
             throw new IllegalStateException("Could not read image file (\"%s\")!".formatted(image.getAbsolutePath()), e);
         }
     }
 
-    public void extractAudio(final @NotNull File inputFile, final @NotNull File outputFile) {
+    /**
+     * Transforms a {@link BufferedImage} into RGB color video frame data.
+     *
+     * @param frame the frame image to transform
+     * @return RGB video frame data
+     */
+    public byte @NotNull [] renderFrameRGB(final @NotNull BufferedImage frame) {
+        final int width = frame.getWidth();
+        final int height = frame.getHeight();
+        byte[] data = new byte[width * height * 4]; // each pixel takes 4 bytes - character index, red, green and blue
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                final int rgb = frame.getRGB(x, y);
+                int red = (rgb >> 16) & 0xFF;
+                int green = (rgb >> 8) & 0xFF;
+                int blue = rgb & 0xFF;
+
+                double luma = red * 0.299D + green * 0.587D + blue * 0.114D; // 0 - 255
+                int index = Math.max(0, Math.min((int) Math.round(luma), Conquade.CHARACTERS.length() - 1));
+
+                int pixel = 4 * (y * width + x); // each pixel takes 4 bytes
+                data[pixel] = (byte) index;
+                data[pixel + 1] = (byte) red;
+                data[pixel + 2] = (byte) green;
+                data[pixel + 3] = (byte) blue;
+            }
+        }
+        return data;
+    }
+
+    /**
+     * Reads a {@link BufferedImage} from a file and transforms it into RGB color video frame data.
+     *
+     * @param image the frame image file to transform
+     * @return RGB video frame data
+     */
+    public byte @NotNull [] renderFrameRGB(final @NotNull File image) {
+        try {
+            return renderFrameRGB(ImageIO.read(image));
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not read image file (\"%s\")!".formatted(image.getAbsolutePath()), e);
+        }
+    }
+
+    /**
+     * Extracts an audio track from a file.
+     *
+     * @param inputFile  the input file to extract audio from
+     * @param outputFile the output audio file
+     * @param audioTrack the audio track to extract
+     */
+    public void extractAudio(final @NotNull File inputFile, final @NotNull File outputFile, final int audioTrack) {
         Conquade.LOGGER.info("Extracting audio using ffmpeg...");
-        final String cmd = "%s -y -i %s -map 0:a:0 -loglevel warning %s"
+        final String cmd = "%s -y -i %s -map 0:a:%d -loglevel warning %s"
                 .formatted(
                         Conquade.ffmpegExe,
                         inputFile.getAbsolutePath(),
+                        audioTrack,
                         outputFile.getAbsolutePath()
                 );
         Conquade.exec(cmd);
         Conquade.LOGGER.info("Audio extracted (\"%s\").".formatted(outputFile));
     }
 
+    /**
+     * Extracts frames from a video.
+     *
+     * @param inputFile    the input file to extract frames from
+     * @param outputFolder the output folder to extract frames to
+     * @param fps          how many frames should be extracted per video second
+     * @param width        the width of the frames
+     * @param height       the height of the frames
+     */
     public void extractFrames(final @NotNull File inputFile, final @NotNull File outputFolder, final int fps, final int width, final int height) {
         Conquade.LOGGER.info("Extracting frames using ffmpeg...");
         final String cmd = "%s -y -i %s -r %d -an -vf scale=%d:%d -pix_fmt yuvj420p -q:v 1 %s%%d.jpg"
@@ -219,7 +320,9 @@ public enum Renderer {
         Conquade.LOGGER.info("Frames extracted (\"%s*.jpg\").".formatted(outputFolder.getAbsolutePath() + File.separator));
     }
 
-
+    /**
+     * {@link ConquadeArgs} wrapper for the {@link Renderer}.
+     */
     public static final class RenderArgs {
         private final @NotNull File inputFile;
         private final @NotNull File outputFile;
@@ -227,6 +330,12 @@ public enum Renderer {
         private boolean renderAudio = true;
         private int fps = 30;
 
+        /**
+         * Read the args and construct a new {@link RenderArgs}, wrapping them.
+         *
+         * @param args the args to wrap
+         * @throws IllegalArgumentException when any of the arguments is invalid or a required argument is missing
+         */
         public RenderArgs(final @NotNull ConquadeArgs args) {
             Map<String, String> argMap = args.getArgMap();
             // Input file
@@ -270,22 +379,47 @@ public enum Renderer {
             }
         }
 
+        /**
+         * Returns the input video file.
+         *
+         * @return the video file
+         */
         public @NotNull File getInputFile() {
             return inputFile;
         }
 
+        /**
+         * Returns the output Conquade video file.
+         *
+         * @return the Conquade video file
+         */
         public @NotNull File getOutputFile() {
             return outputFile;
         }
 
+        /**
+         * Returns whether to overwrite the output file if it exists.
+         *
+         * @return whether to overwrite the output
+         */
         public boolean doOverwriteOutput() {
             return overwriteOutput;
         }
 
+        /**
+         * Returns the output video framerate.
+         *
+         * @return the output video fps
+         */
         public int getFps() {
             return fps;
         }
 
+        /**
+         * Returns whether to render audio or not.
+         *
+         * @return whether to render audio
+         */
         public boolean doRenderAudio() {
             return renderAudio;
         }

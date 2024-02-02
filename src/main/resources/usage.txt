@@ -6,6 +6,7 @@ conquade <action>   # (global params)
     -debug              # enable debug (verbose) mode
     -tmp                # set the conquade temporary folder (default: "/tmp/conquade" | "%USER%\AppData\Local\Temp\conquade")
     -ffmpeg             # set path to the ffmpeg executable (default: "ffmpeg")
+    -256                # use the 256 color space instead of true color (256 ^ 3)
 
 conquade help       # print usage information
 
@@ -20,8 +21,16 @@ conquade play       # play a prerendered conquade file
 *   -i <path>           # input conquade file path
     -noaudio            # do not play audio, even if it is present
     -nores              # ignore resolution mismatch (when the rendered video size is different from the terminal size)
+    -color <target>     # set the color target (default: "text_only")
+        text_only           # print only colored text
+        highlight_only      # do not print text, print only colored highlight
+        black_text          # print black text and colored highlight
 
 conquade stream     # stream (play) a video without prerendering it
 *   -i <path>           # input video file path
     -fps <number>       # set the streaming fps (default: 30), it must be true that "0 < fps < 256"
     -noaudio            # do not stream audio, even if it is present (must be used for videos without an audio track)
+    -color <target>     # set the color target (default: "text_only")
+        text_only           # print only colored text
+        highlight_only      # do not print text, print only colored highlight
+        black_text          # print black text and colored highlight

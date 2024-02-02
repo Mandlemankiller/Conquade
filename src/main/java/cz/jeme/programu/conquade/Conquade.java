@@ -16,22 +16,57 @@ import java.util.Set;
 import java.util.logging.*;
 import java.util.stream.Collectors;
 
+/**
+ * The main class of Conquade.
+ */
 public final class Conquade {
-    // Max 255 characters to prevent byte overflow!
+    /**
+     * The characters used for rendering and playing the video. All the characters must be in ASCII.
+     * <p>Max length is 255 characters!</p>
+     */
     public static final @NotNull String CHARACTERS = " ._-:!?71iIca234db56O089$W%#@Ñ";
+    /**
+     * A char array representing the rendering {@link Conquade#CHARACTERS}.
+     */
     public static final char @NotNull [] CHARACTERS_ARRAY = CHARACTERS.toCharArray();
+    /**
+     * The Conquade file extension.
+     */
     public static final @NotNull String FILE_EXTENSION = ".cqd";
+    /**
+     * The Conquade logger.
+     */
     public static final @NotNull Logger LOGGER = Logger.getLogger(Conquade.class.getName());
+    /**
+     * The width of the terminal obtained when the script started.
+     */
     public static final int TERMINAL_WIDTH;
+    /**
+     * The height of the terminal obtained when the script started.
+     */
     public static final int TERMINAL_HEIGHT;
+    /**
+     * The temporary Conquade directory.
+     */
     public static @NotNull File conquadeTmpDir;
+    /**
+     * All the {@link Process}es run by Conquade.
+     */
     private static final @NotNull Set<Process> PROCESSES = new HashSet<>();
 
+    /**
+     * Whether the debug mode is enabled.
+     */
     public static boolean debug = false;
+
+    /**
+     * Whether the terminal supports truecolor.
+     */
+    public static boolean trueColor = true;
 
     static {
         try {
-            Terminal terminal = TerminalBuilder.terminal();
+            final Terminal terminal = TerminalBuilder.terminal();
             TERMINAL_WIDTH = terminal.getWidth();
             TERMINAL_HEIGHT = terminal.getHeight() - 1; // reserved for screen overflow
         } catch (IOException e) {
@@ -43,26 +78,34 @@ public final class Conquade {
             throw new IllegalStateException("Could not detect system tmp directory!");
         conquadeTmpDir = Path.of(systemTmpDirPath, "conquade").toFile();
 
-        if (CHARACTERS.length() > 255)
+        if (CHARACTERS.length() > 255) // juts in case I had the amazing idea to change the constant to some bullshit
             throw new IllegalStateException("The maximum number of characters is 255!");
     }
 
+    /**
+     * The ffmpeg executable used to extract frames and audio.
+     */
     public static @NotNull String ffmpegExe = "ffmpeg";
 
+    /**
+     * Enable terminal logging.
+     */
     public static void enableLogger() {
         LOGGER.setLevel(debug ? Level.FINE : Level.INFO);
     }
 
+    /**
+     * Disable terminal logging.
+     */
     public static void disableLogger() {
         LOGGER.setLevel(Level.OFF);
     }
-
 
     public static void main(final String @NotNull [] args) {
         LogManager.getLogManager().reset();
         final Handler logHandler = new ConsoleHandler();
         logHandler.setLevel(Level.FINEST);
-        logHandler.setFormatter(ConquadeFormatter.getInstance());
+        logHandler.setFormatter(ConquadeLogFormatter.getInstance());
         LOGGER.addHandler(logHandler);
         try { // logging logic
             main0(args);
@@ -76,10 +119,20 @@ public final class Conquade {
     private static void main0(final String @NotNull [] args) {
         final ConquadeArgs conquadeArgs = new ConquadeArgs(args);
 
+        if (conquadeArgs.getArgMap().containsKey("256"))
+            trueColor = false;
+
+
         if (conquadeArgs.getArgMap().containsKey("debug")) {
             debug = true;
-            enableLogger();
+            enableLogger(); // only sets the logging level
             LOGGER.fine("Debug mode enabled.");
+        }
+
+        if (trueColor) {
+            LOGGER.fine("Using true color mode (16,777,216 colors).");
+        } else {
+            LOGGER.fine("Using 256 color mode.");
         }
 
         LOGGER.fine("Detected terminal size %d×%d.".formatted(TERMINAL_WIDTH, TERMINAL_HEIGHT));
@@ -107,6 +160,11 @@ public final class Conquade {
         }
     }
 
+    /**
+     * Print usage info.
+     *
+     * @throws IllegalStateException when the usage.txt file does not exist or it could not be read
+     */
     public static void help() {
         LOGGER.fine("Printing usage info...");
         try {
@@ -124,6 +182,13 @@ public final class Conquade {
         }
     }
 
+    /**
+     * Log a throwable with stack trace.
+     *
+     * @param level     the log entry level
+     * @param message   the log message
+     * @param throwable the throwable to log
+     */
     public static void logError(final @NotNull Level level, final @NotNull String message, final @NotNull Throwable throwable) {
         final StringWriter stringWriter = new StringWriter();
         final PrintWriter printWriter = new PrintWriter(stringWriter);
@@ -133,20 +198,42 @@ public final class Conquade {
         LOGGER.log(level, message + '\n' + stackTraceStr);
     }
 
+    /**
+     * Log a throwable with {@link Level#SEVERE}.
+     *
+     * @param message   the log message
+     * @param throwable the throwable to log
+     */
     public static void logError(final @NotNull String message, final @NotNull Throwable throwable) {
         logError(Level.SEVERE, message, throwable);
     }
 
+    /**
+     * Log a throwable with {@link Level#SEVERE} and no message.
+     *
+     * @param throwable the throwable to log
+     */
     public static void logError(final @NotNull Throwable throwable) {
         logError("", throwable);
     }
 
-
+    /**
+     * Validate whether the input file exists.
+     *
+     * @param inputFile the input file to validate
+     * @throws IllegalArgumentException when the input file does not exist
+     */
     public static void validateInputFile(final @NotNull File inputFile) {
         if (!inputFile.exists())
             throw new IllegalArgumentException("Input file (\"%s\") does not exist!".formatted(inputFile.getAbsolutePath()));
     }
 
+    /**
+     * Deletes the Conquade temporary directory if it exists, recreates it and creates all the subdirectories (see {@link TmpSubdir}).
+     *
+     * @return a map containing all the Conquade tmp subdirectories specified in {@link TmpSubdir}
+     * @throws IllegalStateException when a (sub)directory could not be deleted or created
+     */
     public static @NotNull Map<TmpSubdir, File> prepareTmp() {
         if (conquadeTmpDir.exists()) {
             try {
@@ -172,17 +259,40 @@ public final class Conquade {
         return subdirs;
     }
 
+    /**
+     * Enum specifying all the Conquade temporary subdirectories created when calling {@link Conquade#prepareTmp()}.
+     */
     public enum TmpSubdir {
+        /**
+         * Render temporary subdirectory.
+         * <p>Stores the extracted video frames, extracted audio and rendered video when rendering or streaming.</p>
+         */
         RENDER,
+        /**
+         * Play temporary subdirectory.
+         * <p>Stores the unpacked rendered video and audio when playing.</p>
+         */
         PLAY;
 
 
+        /**
+         * Returns the subdirectory enum constant name lowercase.
+         *
+         * @return the {@link Enum#name()} in lowercase
+         */
         @Override
         public @NotNull String toString() {
             return name().toLowerCase();
         }
     }
 
+    /**
+     * A command execution wrapper to track the output log and exit codes.
+     *
+     * @param command the command to execute
+     * @return the command exit code
+     * @throws IllegalStateException when the command can not be executed or when the return code is other than 0
+     */
     public static int exec(final @NotNull String command) {
         ProcessBuilder processBuilder = new ProcessBuilder(command.split("\\s+"));
         processBuilder.redirectErrorStream(true);
