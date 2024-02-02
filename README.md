@@ -16,7 +16,9 @@ A video player designed to play videos in the linux console.<br>
 
 ## Showcase
 
-![image](https://raw.githubusercontent.com/Mandlemankiller/Conquade/master/branding/cars.gif)
+![image](https://raw.githubusercontent.com/Mandlemankiller/Conquade/master/branding/render.png)
+![image](https://raw.githubusercontent.com/Mandlemankiller/Conquade/master/branding/rick.gif)
+![image](https://raw.githubusercontent.com/Mandlemankiller/Conquade/master/branding/cars.gif#)
 
 ## Usage
 
