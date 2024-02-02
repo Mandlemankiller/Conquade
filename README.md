@@ -13,3 +13,15 @@ A video player designed to play videos in the linux console.<br>
 
 - Video lags and sometimes desyncs with audio
 - Videos that contain raw audio larger than 2.1GB can't be played
+
+## Build
+
+Requires [Maven](https://maven.apache.org/download.cgi)
+
+```bash
+git clone https://github.com/Mandlemankiller/Conquade.git
+cd Conquade
+mvn package
+```
+
+The jar file is located in `Conquade/target/Conquade-1.0-SNAPSHOT-jar-with-dependencies.jar`
