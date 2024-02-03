@@ -6,7 +6,9 @@ A video player designed to play videos in the linux console.<br>
 
 ## Requirements
 
-- Terminal that supports [Truecolor ANSI](https://en.wikipedia.org/wiki/Color_depth#True_color_(24-bit))
+- Terminal that supports at
+  least [256 colors](https://en.wikipedia.org/wiki/Color_depth#8-bit_color) ([true color](https://en.wikipedia.org/wiki/Color_depth#True_color_(24-bit))
+  is better)
 - [Java 17](https://www.oracle.com/java/technologies/downloads/)
 - [ffmpeg](https://ffmpeg.org/download.html)
 
