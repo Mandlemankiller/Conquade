@@ -270,7 +270,9 @@ public enum Player {
      * @param height the terminal height
      */
     public void printFrame(final @NotNull String frame, final int height) {
-        System.out.print('\r' + frame + AnsiHelper.moveCursorUp(height - 1));
+        System.out.print('\r');
+        System.out.print(frame);
+        System.out.print(AnsiHelper.moveCursorUp(height - 1));
     }
 
     /**
